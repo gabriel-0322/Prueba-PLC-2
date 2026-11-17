@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CleanDose PLC — Estación Automatizada de Dosificación y Formulación</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ENCABEZADO INDUSTRIAL Y BARRA DE ESTADO DEL PLC -->
+  <header class="top-nav">
+    <div class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 36 36" width="32" height="32" fill="none">
+          <rect width="36" height="36" rx="8" fill="#1E3A8A"/>
+          <path d="M18 6L28 12V24L18 30L8 24V12L18 6Z" stroke="#38BDF8" stroke-width="2.5" fill="#0F172A" fill-opacity="0.5"/>
+          <circle cx="18" cy="18" r="4.5" fill="#10B981"/>
+          <path d="M18 10V14M18 22V26M11 14L15 16M21 20L25 22" stroke="#38BDF8" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-title">
+          CleanDose PLC
+          <span class="badge-version">v2.4 PRO</span>
+        </div>
+        <div class="brand-subtitle">Estación Automatizada de Dosificación y Formulación de Productos a Granel</div>
+      </div>
+    </div>
+
+    <!-- Indicadores en Vivo del PLC -->
+    <div class="plc-live-bar">
+      <div class="plc-cpu-chip">
+        <span class="cpu-label">PLC CPU:</span>
+        <span class="cpu-model">S7-1200 / CPU 1214C DC/DC/DC</span>
+      </div>
+
+      <div class="plc-status-badge status-run" id="plcStatusBadge">
+        <span class="pulse-dot"></span>
+        <span class="status-name" id="plcStatusText">PLC RUN</span>
+      </div>
+
+      <div class="plc-metric-item">
+        <span class="metric-label">Scan Cycle:</span>
+        <span class="metric-val" id="metricScanTime">50.0 ms</span>
+      </div>
+
+      <div class="plc-metric-item">
+        <span class="metric-label">Receta Activa:</span>
+        <span class="metric-val" id="metricActiveRecipe">Fórmula Hogar</span>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn-action-icon" id="btnSoundToggle" title="Activar/Silenciar Efectos de Audio">
+          <span id="soundIcon">🔊</span>
+        </button>
+        <button class="btn-action-icon" id="btnFullscreen" title="Modo Pantalla Completa para Proyección">
+          ⛶
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- PESTAÑAS DE NAVEGACIÓN PRINCIPAL -->
+  <nav class="main-tabs-bar">
+    <button class="tab-btn active" data-tab="tab-simulador">
+      <span class="tab-icon">🖥️</span>
+      <span class="tab-label">1. Simulador en Vivo (HMI + Planta + Ladder)</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-compuertas">
+      <span class="tab-icon">⚡</span>
+      <span class="tab-label">2. Diagrama de Compuertas Lógicas (IEEE/IEC)</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-ingenieria">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">3. Alcance, Diagnóstico y Tabla I/O</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-proteus">
+      <span class="tab-icon">🛠️</span>
+      <span class="tab-label">4. Manual Operativo & Guía Proteus</span>
+    </button>
+  </nav>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main-content">
+
+    <!-- ========================================================================= -->
+    <!-- PESTAÑA 1: SIMULADOR INTERACTIVO EN VIVO                                  -->
+    <!-- ========================================================================= -->
+    <section class="tab-pane active" id="tab-simulador">
+      <div class="simulator-layout">
+
+        <!-- ZONA A: VISTA DE PLANTA 2D ANIMADA -->
+        <div class="plant-zone card-surface">
+          <div class="zone-header">
+            <div class="zone-title">
+              <span class="zone-tag">ZONA A</span>
+              <h3>Planta de Dosificación y Envasado 2D</h3>
+            </div>
+            <div class="simulation-speed-ctrl">
+              <span class="lbl-speed">Velocidad:</span>
+              <button class="btn-speed active" data-speed="1">1x Real</button>
+              <button class="btn-speed" data-speed="2">2x Rápido</button>
+            </div>
+          </div>
+
+          <!-- Escenario Gráfico SVG de la Planta -->
+          <div class="plant-viewport">
+            <svg id="plantSvg" viewBox="0 0 520 620" class="plant-svg">
+              <defs>
+                <!-- Gradientes para tanques y líquidos -->
+                <linearGradient id="gradWater" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.8"/>
+                  <stop offset="50%" stop-color="#7DD3FC" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="#0284C7" stop-opacity="0.85"/>
+                </linearGradient>
+
+                <linearGradient id="gradConcentrate" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#1D4ED8" stop-opacity="0.85"/>
+                  <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="#1E40AF" stop-opacity="0.85"/>
+                </linearGradient>
+
+                <linearGradient id="gradFinishedLiquid" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#0284C7" stop-opacity="0.9"/>
+                  <stop offset="50%" stop-color="#2563EB" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="#1E3A8A" stop-opacity="0.9"/>
+                </linearGradient>
+
+                <linearGradient id="gradStainlessSteel" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#E2E8F0"/>
+                  <stop offset="50%" stop-color="#F8FAFC"/>
+                  <stop offset="100%" stop-color="#CBD5E1"/>
+                </linearGradient>
+
+                <linearGradient id="gradValveActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#22C55E"/>
+                  <stop offset="100%" stop-color="#15803D"/>
+                </linearGradient>
+
+                <linearGradient id="gradValveInactive" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#94A3B8"/>
+                  <stop offset="100%" stop-color="#64748B"/>
+                </linearGradient>
+
+                <!-- Filtro de resplandor para flujo activo -->
+                <filter id="glowFlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                </filter>
+              </defs>
+
+              <!-- Fondo estructural de la estación -->
+              <rect x="10" y="10" width="500" height="600" rx="12" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="2"/>
+              <line x1="20" y1="210" x2="500" y2="210" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4 4"/>
+              <line x1="20" y1="420" x2="500" y2="420" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+              <!-- ================= TANQUE 1: BASE AGUA PURIFICADA ================= -->
+              <g id="tank1Group" transform="translate(40, 25)">
+                <!-- Marco del Tanque -->
+                <rect x="0" y="0" width="180" height="135" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+                <rect x="8" y="8" width="164" height="119" rx="4" fill="#F8FAFC"/>
+                
+                <!-- Nivel de Líquido Dinámico T1 -->
+                <clipPath id="clipTank1">
+                  <rect x="8" y="8" width="164" height="119" rx="4"/>
+                </clipPath>
+                <g clip-path="url(#clipTank1)">
+                  <rect id="t1LiquidRect" x="8" y="30" width="164" height="97" fill="url(#gradWater)"/>
+                  <path id="t1Wave" d="M8 30 Q 49 26, 90 30 T 172 30" fill="none" stroke="#BAE6FD" stroke-width="2" class="liquid-wave"/>
+                </g>
+
+                <!-- Escala graduada -->
+                <line x1="16" y1="25" x2="28" y2="25" stroke="#475569" stroke-width="1.5"/>
+                <text x="32" y="28" font-size="9" font-family="'JetBrains Mono', monospace" fill="#475569">100%</text>
+                <line x1="16" y1="67" x2="24" y2="67" stroke="#475569" stroke-width="1"/>
+                <text x="28" y="70" font-size="9" font-family="'JetBrains Mono', monospace" fill="#475569">50%</text>
+                <line x1="16" y1="110" x2="28" y2="110" stroke="#DC2626" stroke-width="1.5"/>
+                <text x="32" y="113" font-size="9" font-family="'JetBrains Mono', monospace" fill="#DC2626" font-weight="bold">15%</text>
+
+                <!-- Sensor de Nivel T1 (I0.3) -->
+                <circle id="sensorT1Dot" cx="160" cy="110" r="5" fill="#16A34A" stroke="#FFFFFF" stroke-width="1.5"/>
+                <text x="110" y="114" font-size="8.5" font-family="'JetBrains Mono', monospace" fill="#334155">I0.3 OK</text>
+
+                <!-- Título y Porcentaje del Tanque 1 -->
+                <text x="90" y="-8" text-anchor="middle" font-size="11" font-weight="700" fill="#0F172A">TANQUE 1: BASE AGUA</text>
+                <text id="t1LevelText" x="90" y="75" text-anchor="middle" font-size="16" font-family="'JetBrains Mono', monospace" font-weight="bold" fill="#0F172A">85% (425 L)</text>
+              </g>
+
+              <!-- ================= TANQUE 2: CONCENTRADO ACTIVO ================= -->
+              <g id="tank2Group" transform="translate(300, 25)">
+                <!-- Marco del Tanque -->
+                <rect x="0" y="0" width="180" height="135" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+                <rect x="8" y="8" width="164" height="119" rx="4" fill="#F8FAFC"/>
+                
+                <!-- Nivel de Líquido Dinámico T2 -->
+                <clipPath id="clipTank2">
+                  <rect x="8" y="8" width="164" height="119" rx="4"/>
+                </clipPath>
+                <g clip-path="url(#clipTank2)">
+                  <rect id="t2LiquidRect" x="8" y="30" width="164" height="97" fill="url(#gradConcentrate)"/>
+                  <path id="t2Wave" d="M8 30 Q 49 26, 90 30 T 172 30" fill="none" stroke="#93C5FD" stroke-width="2" class="liquid-wave"/>
+                </g>
+
+                <!-- Escala graduada -->
+                <line x1="16" y1="25" x2="28" y2="25" stroke="#475569" stroke-width="1.5"/>
+                <text x="32" y="28" font-size="9" font-family="'JetBrains Mono', monospace" fill="#475569">100%</text>
+                <line x1="16" y1="67" x2="24" y2="67" stroke="#475569" stroke-width="1"/>
+                <text x="28" y="70" font-size="9" font-family="'JetBrains Mono', monospace" fill="#475569">50%</text>
+                <line x1="16" y1="110" x2="28" y2="110" stroke="#DC2626" stroke-width="1.5"/>
+                <text x="32" y="113" font-size="9" font-family="'JetBrains Mono', monospace" fill="#DC2626" font-weight="bold">15%</text>
+
+                <!-- Sensor de Nivel T2 (I0.4) -->
+                <circle id="sensorT2Dot" cx="160" cy="110" r="5" fill="#16A34A" stroke="#FFFFFF" stroke-width="1.5"/>
+                <text x="110" y="114" font-size="8.5" font-family="'JetBrains Mono', monospace" fill="#334155">I0.4 OK</text>
+
+                <!-- Título y Porcentaje del Tanque 2 -->
+                <text x="90" y="-8" text-anchor="middle" font-size="11" font-weight="700" fill="#0F172A">TANQUE 2: CONCENTRADO</text>
+                <text id="t2LevelText" x="90" y="75" text-anchor="middle" font-size="16" font-family="'JetBrains Mono', monospace" font-weight="bold" fill="#FFFFFF">80% (200 L)</text>
+              </g>
+
+              <!-- ================= SISTEMA DE TUBERÍAS Y VÁLVULAS ================= -->
+              <!-- Tubería Base (T1 -> Cámara) -->
+              <path d="M130 160 L130 250 L235 250 L235 285" fill="none" stroke="#CBD5E1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+              <path id="pipeFlow1" d="M130 160 L130 250 L235 250 L235 285" fill="none" stroke="#0284C7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="pipe-empty"/>
+
+              <!-- Tubería Concentrado (T2 -> Cámara) -->
+              <path d="M390 160 L390 250 L285 250 L285 285" fill="none" stroke="#CBD5E1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+              <path id="pipeFlow2" d="M390 160 L390 250 L285 250 L285 285" fill="none" stroke="#1D4ED8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="pipe-empty"/>
+
+              <!-- Electroválvula EV1 (Q0.0) -->
+              <g id="valve1Group" transform="translate(115, 200)">
+                <polygon points="0,0 30,20 0,20 30,0" fill="url(#gradValveInactive)" stroke="#334155" stroke-width="1.5" id="valve1Shape"/>
+                <rect x="10" y="-12" width="10" height="12" fill="#475569" stroke="#1E293B" stroke-width="1"/>
+                <circle cx="15" cy="-6" r="3" fill="#EF4444" id="valve1Led"/>
+                <text x="36" y="14" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace" fill="#1E293B">EV1 (Q0.0)</text>
+                <text id="valve1StatusText" x="36" y="26" font-size="8.5" fill="#64748B">CERRADA</text>
+              </g>
+
+              <!-- Electroválvula EV2 (Q0.1) -->
+              <g id="valve2Group" transform="translate(375, 200)">
+                <polygon points="0,0 30,20 0,20 30,0" fill="url(#gradValveInactive)" stroke="#334155" stroke-width="1.5" id="valve2Shape"/>
+                <rect x="10" y="-12" width="10" height="12" fill="#475569" stroke="#1E293B" stroke-width="1"/>
+                <circle cx="15" cy="-6" r="3" fill="#EF4444" id="valve2Led"/>
+                <text x="-65" y="14" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace" fill="#1E293B">EV2 (Q0.1)</text>
+                <text id="valve2StatusText" x="-65" y="26" font-size="8.5" fill="#64748B">CERRADA</text>
+              </g>
+
+              <!-- ================= CÁMARA DE MEZCLA Y AGITADOR ================= -->
+              <g id="mixerChamberGroup" transform="translate(210, 275)">
+                <!-- Vaso colector y cámara de mezcla -->
+                <path d="M10,10 L90,10 L85,75 L55,95 L45,95 L15,75 Z" fill="#FFFFFF" stroke="#64748B" stroke-width="2"/>
+                <path id="mixerLiquidLevel" d="M15,65 L85,65 L85,75 L55,95 L45,95 L15,75 Z" fill="#0EA5E9" fill-opacity="0.4"/>
+
+                <!-- Motor Mezclador Superior (Q0.2) -->
+                <rect x="35" y="-30" width="30" height="36" rx="4" fill="url(#gradStainlessSteel)" stroke="#475569" stroke-width="1.8"/>
+                <line x1="38" y1="-22" x2="62" y2="-22" stroke="#64748B" stroke-width="1.5"/>
+                <line x1="38" y1="-14" x2="62" y2="-14" stroke="#64748B" stroke-width="1.5"/>
+                <line x1="38" y1="-6" x2="62" y2="-6" stroke="#64748B" stroke-width="1.5"/>
+
+                <!-- Eje de rotación -->
+                <line x1="50" y1="6" x2="50" y2="70" stroke="#334155" stroke-width="3"/>
+
+                <!-- Aspas del Agitador Rotativo -->
+                <g id="agitatorBlades" transform="translate(50, 68)">
+                  <ellipse cx="0" cy="0" rx="22" ry="5" fill="#0284C7" stroke="#0F172A" stroke-width="1"/>
+                  <polygon points="-20,-2 -10,-8 10,8 20,2" fill="#0369A1"/>
+                </g>
+
+                <!-- Etiqueta del Motor -->
+                <text x="105" y="-10" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace" fill="#1E293B">MTR1 (Q0.2)</text>
+                <text id="mixerStatusText" x="105" y="4" font-size="8.5" fill="#64748B">AGITADOR OFF</text>
+                <circle id="mixerLed" cx="95" cy="-13" r="3.5" fill="#94A3B8"/>
+
+                <!-- Boquilla de Llenado Inferior -->
+                <rect x="44" y="95" width="12" height="20" fill="#475569" stroke="#334155" stroke-width="1.2"/>
+                <!-- Chorro de líquido dispensado -->
+                <path id="fillingStream" d="M48 115 L48 185 M52 115 L52 185" stroke="#38BDF8" stroke-width="3" stroke-dasharray="6 3" class="dispense-off"/>
+              </g>
+
+              <!-- ================= ZONA DE ENVASADO Y SENSOR DE BIDÓN ================= -->
+              <!-- Plataforma / Base receptora -->
+              <rect x="180" y="490" width="160" height="18" rx="4" fill="#334155" stroke="#0F172A" stroke-width="2"/>
+              <line x1="190" y1="499" x2="330" y2="499" stroke="#64748B" stroke-width="2" stroke-dasharray="10 5"/>
+
+              <!-- Sensor Óptico de Presencia (I0.2) -->
+              <g id="sensorPresenceGroup" transform="translate(130, 430)">
+                <rect x="0" y="0" width="22" height="30" rx="3" fill="#1E293B" stroke="#0F172A" stroke-width="1.5"/>
+                <circle cx="11" cy="15" r="5" fill="#EF4444" id="sensorPresenceLed"/>
+                <text x="-6" y="-8" font-size="9" font-weight="700" font-family="'JetBrains Mono', monospace" fill="#1E293B">I0.2</text>
+                <!-- Haz láser hacia el bidón -->
+                <line id="laserBeam" x1="22" y1="15" x2="70" y2="15" stroke="#EF4444" stroke-width="2" stroke-dasharray="3 2"/>
+              </g>
+
+              <!-- Bidón Translúcido (Contenedor Receptor) -->
+              <g id="containerGroup" transform="translate(205, 380)">
+                <!-- Contenedor Vacío / Base -->
+                <path d="M20,10 L90,10 L90,20 L100,35 L100,105 Q100,110 95,110 L15,110 Q10,110 10,105 L10,35 L20,20 Z" fill="#F8FAFC" fill-opacity="0.85" stroke="#64748B" stroke-width="2.2" id="containerBody"/>
+                <!-- Asa del Bidón -->
+                <path d="M25,24 L85,24" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
+                
+                <!-- Recorte del Líquido dentro del Bidón -->
+                <clipPath id="clipCarboy">
+                  <path d="M12,38 L98,38 L98,105 Q98,108 94,108 L16,108 Q12,108 12,105 Z"/>
+                </clipPath>
+                <g clip-path="url(#clipCarboy)">
+                  <rect id="carboyLiquid" x="12" y="108" width="86" height="0" fill="url(#gradFinishedLiquid)"/>
+                  <line id="carboyMeniscus" x1="12" y1="108" x2="98" y2="108" stroke="#BAE6FD" stroke-width="2.5" opacity="0"/>
+                </g>
+
+                <!-- Escala graduada en el bidón -->
+                <line x1="88" y1="50" x2="96" y2="50" stroke="#64748B" stroke-width="1.5"/>
+                <text x="70" y="52" font-size="7.5" font-family="'JetBrains Mono', monospace" fill="#475569">1000ml</text>
+                <line x1="90" y1="75" x2="96" y2="75" stroke="#64748B" stroke-width="1"/>
+                <text x="74" y="77" font-size="7" font-family="'JetBrains Mono', monospace" fill="#64748B">500ml</text>
+                <line x1="90" y1="95" x2="96" y2="95" stroke="#64748B" stroke-width="1"/>
+
+                <!-- Texto de Volumen en tiempo real -->
+                <text id="carboyVolumeText" x="55" y="80" text-anchor="middle" font-size="12" font-weight="700" font-family="'JetBrains Mono', monospace" fill="#0F172A">0 ml</text>
+              </g>
+
+              <!-- Estado de la Baliza / Piloto sobre la estación -->
+              <g id="beaconGroup" transform="translate(450, 440)">
+                <rect x="0" y="0" width="24" height="48" rx="4" fill="#1E293B"/>
+                <circle id="beaconGreen" cx="12" cy="14" r="7" fill="#15803D" opacity="0.3"/>
+                <circle id="beaconRed" cx="12" cy="34" r="7" fill="#DC2626" opacity="0.3"/>
+                <text x="12" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="#334155">PILOTO</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Botones de Acción Operativa Rápida en la Planta -->
+          <div class="plant-actions-panel">
+            <div class="action-subgroup">
+              <span class="subgroup-lbl">Simulación de Tanques:</span>
+              <button class="btn-tool" id="btnDrainT1" title="Forzar nivel T1 < 15% para probar alarma">Vaciar T1 (&lt;15%)</button>
+              <button class="btn-tool" id="btnFillT1" title="Rellenar Tanque 1 al 100%">Rellenar T1</button>
+              <button class="btn-tool" id="btnDrainT2" title="Forzar nivel T2 < 15% para probar alarma">Vaciar T2 (&lt;15%)</button>
+              <button class="btn-tool" id="btnFillT2" title="Rellenar Tanque 2 al 100%">Rellenar T2</button>
+            </div>
+            <div class="action-subgroup">
+              <span class="subgroup-lbl">Acciones del Operario (Poka-Yoke):</span>
+              <button class="btn-oper" id="btnPlaceCarboy">📦 Colocar Bidón Vacío</button>
+              <button class="btn-oper" id="btnRemoveCarboy" disabled>✋ Retirar Bidón</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZONA B: PANEL DE CONTROL HMI & TABLERO I/O -->
+        <div class="hmi-zone card-surface">
+          <div class="zone-header">
+            <div class="zone-title">
+              <span class="zone-tag">ZONA B</span>
+              <h3>Panel HMI & Tablero de Control</h3>
+            </div>
+            <div class="plc-mode-tag">AUTO DISCRETO</div>
+          </div>
+
+          <!-- Display Digital OLED de Producción -->
+          <div class="digital-display-card">
+            <div class="disp-header">
+              <span class="disp-title">ESTADO DE OPERACIÓN</span>
+              <span class="disp-badge" id="dispStepBadge">PASO 0 / IDLE</span>
+            </div>
+            <div class="disp-main-text" id="dispMessage">
+              SISTEMA LISTO: COLOQUE UN BIDÓN VACÍO EN LA BASE RECEPTORA
+            </div>
+            <div class="disp-progress-container">
+              <div class="disp-progress-bar" id="dispProgressBar" style="width: 0%;"></div>
+            </div>
+            <div class="disp-footer-metrics">
+              <div class="disp-metric">
+                <span class="lbl">Tiempo Etapa:</span>
+                <span class="val" id="dispStageTimer">0.0 s</span>
+              </div>
+              <div class="disp-metric">
+                <span class="lbl">Contador CTU C1:</span>
+                <span class="val" id="dispCounter">0 bidones</span>
+              </div>
+              <div class="disp-metric">
+                <span class="lbl">Volumen Total:</span>
+                <span class="val" id="dispTotalVolume">0.00 L</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botonera de Control de Grado Industrial -->
+          <div class="industrial-keypad">
+            <div class="keypad-row">
+              <!-- Pulsador START (I0.0) -->
+              <div class="btn-industrial-wrap">
+                <button class="btn-ind btn-start" id="btnStart" title="Pulsador Start (I0.0)">
+                  <div class="ind-ring"></div>
+                  <span class="ind-text">START</span>
+                  <span class="ind-addr">I0.0</span>
+                </button>
+                <span class="ind-caption">Marcha Ciclo</span>
+              </div>
+
+              <!-- Pulsador STOP (I0.1) -->
+              <div class="btn-industrial-wrap">
+                <button class="btn-ind btn-stop" id="btnStop" title="Pulsador Stop (I0.1)">
+                  <div class="ind-ring"></div>
+                  <span class="ind-text">STOP</span>
+                  <span class="ind-addr">I0.1</span>
+                </button>
+                <span class="ind-caption">Paro Normal</span>
+              </div>
+
+              <!-- Selector de Receta (I0.5) -->
+              <div class="recipe-selector-wrap">
+                <div class="selector-dial-box">
+                  <div class="dial-labels">
+                    <span class="dial-lbl" id="lblRecHogar">HOGAR</span>
+                    <span class="dial-lbl" id="lblRecInd">INDUSTRIAL</span>
+                  </div>
+                  <div class="dial-knob pos-0" id="recipeSelectorKnob" title="Click para alternar receta (I0.5)">
+                    <div class="knob-indicator"></div>
+                  </div>
+                  <div class="dial-sub-text">I0.5: <span id="valI05">0 (HOGAR)</span></div>
+                </div>
+                <div class="recipe-details-box" id="recipeDetailsBox">
+                  <div class="rec-name">Fórmula Hogar (1.0 L)</div>
+                  <div class="rec-steps">Base 4.0s | Conc 2.0s | Mezcla 3.0s</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fila Inferior: Paro de Emergencia y Reset -->
+            <div class="keypad-row bottom-row">
+              <!-- Hongo de Paro de Emergencia (I0.6) -->
+              <div class="estop-wrap">
+                <button class="btn-estop" id="btnEstop" title="Hongo de Paro de Emergencia (I0.6) - Click para enclavar/liberar">
+                  <div class="estop-mushroom">
+                    <span>EMERGENCY<br>STOP</span>
+                  </div>
+                  <span class="estop-addr">I0.6 (NC)</span>
+                </button>
+                <div class="estop-status-text" id="estopStatusText">SEGURO (Cerrado)</div>
+              </div>
+
+              <!-- Reset Contador / Alarmas (I0.7) -->
+              <div class="btn-industrial-wrap">
+                <button class="btn-ind btn-reset" id="btnReset" title="Reset Contador / Alarmas (I0.7)">
+                  <div class="ind-ring"></div>
+                  <span class="ind-text">RESET</span>
+                  <span class="ind-addr">I0.7</span>
+                </button>
+                <span class="ind-caption">Reset Alarmas / C1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monitor de LEDs Físicos del PLC (I/O Rack) -->
+          <div class="plc-rack-card">
+            <div class="rack-header">
+              <span class="rack-title">ESTADO DE E/S FÍSICAS (RACK 0)</span>
+              <span class="rack-voltage">24V DC SINK/SOURCE</span>
+            </div>
+
+            <!-- Fila de Entradas Digitales (Inputs) -->
+            <div class="rack-section">
+              <div class="section-title">ENTRADAS DIGITALES (INPUTS %I0.0 - %I0.7)</div>
+              <div class="io-leds-grid" id="inputsGrid">
+                <div class="io-led-item" id="led-I0.0">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">I0.0</span>
+                  <span class="led-desc">START</span>
+                </div>
+                <div class="io-led-item" id="led-I0.1">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">I0.1</span>
+                  <span class="led-desc">STOP</span>
+                </div>
+                <div class="io-led-item" id="led-I0.2">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">I0.2</span>
+                  <span class="led-desc">BIDÓN</span>
+                </div>
+                <div class="io-led-item" id="led-I0.3">
+                  <div class="led-bulb led-on"></div>
+                  <span class="led-name">I0.3</span>
+                  <span class="led-desc">NVL T1</span>
+                </div>
+                <div class="io-led-item" id="led-I0.4">
+                  <div class="led-bulb led-on"></div>
+                  <span class="led-name">I0.4</span>
+                  <span class="led-desc">NVL T2</span>
+                </div>
+                <div class="io-led-item" id="led-I0.5">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">I0.5</span>
+                  <span class="led-desc">RECETA</span>
+                </div>
+                <div class="io-led-item" id="led-I0.6">
+                  <div class="led-bulb led-on"></div>
+                  <span class="led-name">I0.6</span>
+                  <span class="led-desc">E-STOP</span>
+                </div>
+                <div class="io-led-item" id="led-I0.7">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">I0.7</span>
+                  <span class="led-desc">RESET</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fila de Salidas Digitales (Outputs) -->
+            <div class="rack-section">
+              <div class="section-title">SALIDAS DIGITALES (OUTPUTS %Q0.0 - %Q0.4)</div>
+              <div class="io-leds-grid" id="outputsGrid">
+                <div class="io-led-item" id="led-Q0.0">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">Q0.0</span>
+                  <span class="led-desc">EV1 BASE</span>
+                </div>
+                <div class="io-led-item" id="led-Q0.1">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">Q0.1</span>
+                  <span class="led-desc">EV2 CONC</span>
+                </div>
+                <div class="io-led-item" id="led-Q0.2">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">Q0.2</span>
+                  <span class="led-desc">MTR MEZCLA</span>
+                </div>
+                <div class="io-led-item" id="led-Q0.3">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">Q0.3</span>
+                  <span class="led-desc">LUZ VERDE</span>
+                </div>
+                <div class="io-led-item" id="led-Q0.4">
+                  <div class="led-bulb led-off"></div>
+                  <span class="led-name">Q0.4</span>
+                  <span class="led-desc">BALIZA ROJA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reporte de Turno / Registro de Auditoría Rápido -->
+          <div class="audit-strip">
+            <span class="audit-icon">📋</span>
+            <span class="audit-text">Registro de trazabilidad por turno activo. Lote #LT-2026-X1</span>
+            <button class="btn-export-log" id="btnExportLog">Descargar Certificado</button>
+          </div>
+        </div>
+
+        <!-- ZONA C: VISOR DE LÓGICA LADDER EN TIEMPO REAL -->
+        <div class="ladder-zone card-surface">
+          <div class="zone-header">
+            <div class="zone-title">
+              <span class="zone-tag">ZONA C</span>
+              <h3>Visor de Lógica Ladder Dinámica (IEC 61131-3)</h3>
+            </div>
+            <div class="ladder-legend">
+              <span class="leg-item"><span class="leg-color leg-active"></span> Conducción (1)</span>
+              <span class="leg-item"><span class="leg-color leg-inactive"></span> Abierto (0)</span>
+            </div>
+          </div>
+
+          <!-- Contenedor del Diagrama Ladder con 7 Escalones -->
+          <div class="ladder-scrollable-container">
+
+            <!-- NETWORK 1: Permisivos y Enclavamiento M0.0 -->
+            <div class="ladder-network" id="net1">
+              <div class="net-header">
+                <span class="net-num">Network 1</span>
+                <span class="net-desc">Permisivos de Seguridad y Enclavamiento de Marcha (M0.0)</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <!-- Riel izquierdo -->
+                  <div class="power-rail left-rail"></div>
+
+                  <!-- Rama de Start y Auto-enclavamiento -->
+                  <div class="ladder-branch-parallel">
+                    <div class="ladder-element contact contact-no" id="elem_I00">
+                      <span class="elem-tag">I0.0</span>
+                      <span class="elem-sym">| |</span>
+                      <span class="elem-lbl">START</span>
+                    </div>
+                    <div class="ladder-element contact contact-no" id="elem_M00_ret">
+                      <span class="elem-tag">M0.0</span>
+                      <span class="elem-sym">| |</span>
+                      <span class="elem-lbl">Retención</span>
+                    </div>
+                  </div>
+
+                  <!-- Contacto STOP I0.1 (NC en software) -->
+                  <div class="ladder-element contact contact-nc" id="elem_I01">
+                    <span class="elem-tag">I0.1</span>
+                    <span class="elem-sym">|/|</span>
+                    <span class="elem-lbl">STOP</span>
+                  </div>
+
+                  <!-- Contacto Sensor Bidón I0.2 (NA) -->
+                  <div class="ladder-element contact contact-no" id="elem_I02">
+                    <span class="elem-tag">I0.2</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Bidón OK</span>
+                  </div>
+
+                  <!-- Contacto Nivel T1 I0.3 (NA) -->
+                  <div class="ladder-element contact contact-no" id="elem_I03">
+                    <span class="elem-tag">I0.3</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Nvl T1 &gt; 15%</span>
+                  </div>
+
+                  <!-- Contacto Nivel T2 I0.4 (NA) -->
+                  <div class="ladder-element contact contact-no" id="elem_I04">
+                    <span class="elem-tag">I0.4</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Nvl T2 &gt; 15%</span>
+                  </div>
+
+                  <!-- Contacto Paro Emergencia I0.6 (NA si el botón físico es NC) -->
+                  <div class="ladder-element contact contact-no" id="elem_I06">
+                    <span class="elem-tag">I0.6</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">E-STOP OK</span>
+                  </div>
+
+                  <!-- Contacto Poka-Yoke M0.4 (NC: Bloquea si ya completó ciclo) -->
+                  <div class="ladder-element contact contact-nc" id="elem_M04_lock">
+                    <span class="elem-tag">M0.4</span>
+                    <span class="elem-sym">|/|</span>
+                    <span class="elem-lbl">Bloqueo Poka</span>
+                  </div>
+
+                  <!-- Conexión a Bobina M0.0 -->
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil" id="elem_M00_coil">
+                    <span class="elem-tag">M0.0</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">Sistema Run</span>
+                  </div>
+
+                  <!-- Riel derecho -->
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 2: Etapa 1 - Electroválvula Base EV1 (Q0.0) y TON T1 (4.0s) -->
+            <div class="ladder-network" id="net2">
+              <div class="net-header">
+                <span class="net-num">Network 2</span>
+                <span class="net-desc">Etapa 1: Válvula Base Agua (Q0.0) y Temporizador TON T1 (4.0s)</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+                  
+                  <div class="ladder-element contact contact-no" id="elem_net2_M00">
+                    <span class="elem-tag">M0.0</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Run</span>
+                  </div>
+
+                  <div class="ladder-element contact contact-nc" id="elem_net2_T1">
+                    <span class="elem-tag">T1.DN</span>
+                    <span class="elem-sym">|/|</span>
+                    <span class="elem-lbl">T1 Activo</span>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil" id="elem_Q00_coil">
+                    <span class="elem-tag">Q0.0</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">EV1 Base</span>
+                  </div>
+
+                  <!-- Bloque Temporizador T1 -->
+                  <div class="ladder-block timer-block" id="block_T1">
+                    <div class="block-title">TON T1</div>
+                    <div class="block-row"><span class="p-name">IN:</span> <span class="p-val" id="t1_in">0</span></div>
+                    <div class="block-row"><span class="p-name">PT:</span> <span class="p-val">4.0s</span></div>
+                    <div class="block-row"><span class="p-name">ET:</span> <span class="p-val" id="t1_et">0.0s</span></div>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 3: Etapa 2 - Electroválvula Concentrado EV2 (Q0.1) y TON T2 / T3 -->
+            <div class="ladder-network" id="net3">
+              <div class="net-header">
+                <span class="net-num">Network 3</span>
+                <span class="net-desc">Etapa 2: Válvula Concentrado (Q0.1) gobernada por Selector Receta (I0.5)</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net3_M00">
+                    <span class="elem-tag">M0.0</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Run</span>
+                  </div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net3_T1DN">
+                    <span class="elem-tag">T1.DN</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Base Lista</span>
+                  </div>
+
+                  <!-- Bifurcación de receta: Hogar (I0.5=0, T2=2s) o Industrial (I0.5=1, T3=5s) -->
+                  <div class="ladder-branch-parallel">
+                    <div class="branch-series">
+                      <div class="ladder-element contact contact-nc" id="elem_net3_I05_hogar">
+                        <span class="elem-tag">I0.5</span>
+                        <span class="elem-sym">|/|</span>
+                        <span class="elem-lbl">Hogar</span>
+                      </div>
+                      <div class="ladder-element contact contact-nc" id="elem_net3_T2DN">
+                        <span class="elem-tag">T2.DN</span>
+                        <span class="elem-sym">|/|</span>
+                        <span class="elem-lbl">2.0s</span>
+                      </div>
+                    </div>
+                    <div class="branch-series">
+                      <div class="ladder-element contact contact-no" id="elem_net3_I05_ind">
+                        <span class="elem-tag">I0.5</span>
+                        <span class="elem-sym">| |</span>
+                        <span class="elem-lbl">Industrial</span>
+                      </div>
+                      <div class="ladder-element contact contact-nc" id="elem_net3_T3DN">
+                        <span class="elem-tag">T3.DN</span>
+                        <span class="elem-sym">|/|</span>
+                        <span class="elem-lbl">5.0s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil" id="elem_Q01_coil">
+                    <span class="elem-tag">Q0.1</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">EV2 Conc</span>
+                  </div>
+
+                  <!-- Bloques Temporizadores T2 y T3 -->
+                  <div class="dual-timer-box">
+                    <div class="ladder-block timer-block" id="block_T2">
+                      <div class="block-title">TON T2 (Hogar)</div>
+                      <div class="block-row"><span class="p-name">PT:</span> <span class="p-val">2.0s</span></div>
+                      <div class="block-row"><span class="p-name">ET:</span> <span class="p-val" id="t2_et">0.0s</span></div>
+                    </div>
+                    <div class="ladder-block timer-block" id="block_T3">
+                      <div class="block-title">TON T3 (Ind)</div>
+                      <div class="block-row"><span class="p-name">PT:</span> <span class="p-val">5.0s</span></div>
+                      <div class="block-row"><span class="p-name">ET:</span> <span class="p-val" id="t3_et">0.0s</span></div>
+                    </div>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 4: Etapa 3 - Motor Mezclador (Q0.2) y TON T4 -->
+            <div class="ladder-network" id="net4">
+              <div class="net-header">
+                <span class="net-num">Network 4</span>
+                <span class="net-desc">Etapa 3: Homogeneizador / Mezclador (Q0.2) y Temporizador TON T4</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net4_M00">
+                    <span class="elem-tag">M0.0</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Run</span>
+                  </div>
+
+                  <!-- Concentrado terminado según receta -->
+                  <div class="ladder-branch-parallel">
+                    <div class="ladder-element contact contact-no" id="elem_net4_T2DN">
+                      <span class="elem-tag">T2.DN</span>
+                      <span class="elem-sym">| |</span>
+                      <span class="elem-lbl">Conc Hogar OK</span>
+                    </div>
+                    <div class="ladder-element contact contact-no" id="elem_net4_T3DN">
+                      <span class="elem-tag">T3.DN</span>
+                      <span class="elem-sym">| |</span>
+                      <span class="elem-lbl">Conc Ind OK</span>
+                    </div>
+                  </div>
+
+                  <div class="ladder-element contact contact-nc" id="elem_net4_T4DN">
+                    <span class="elem-tag">T4.DN</span>
+                    <span class="elem-sym">|/|</span>
+                    <span class="elem-lbl">Mezclando</span>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil" id="elem_Q02_coil">
+                    <span class="elem-tag">Q0.2</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">Motor MTR1</span>
+                  </div>
+
+                  <!-- Bloque Temporizador T4 -->
+                  <div class="ladder-block timer-block" id="block_T4">
+                    <div class="block-title">TON T4</div>
+                    <div class="block-row"><span class="p-name">PT:</span> <span class="p-val" id="t4_pt">3.0s</span></div>
+                    <div class="block-row"><span class="p-name">ET:</span> <span class="p-val" id="t4_et">0.0s</span></div>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 5: Fin de Ciclo, Luz Verde (Q0.3), Contador CTU C1 y Poka-Yoke M0.4 -->
+            <div class="ladder-network" id="net5">
+              <div class="net-header">
+                <span class="net-num">Network 5</span>
+                <span class="net-desc">Fin de Ciclo: Luz Verde (Q0.3), Contador CTU C1 y Memoria Poka-Yoke (M0.4)</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net5_T4DN">
+                    <span class="elem-tag">T4.DN</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Mezcla Fin</span>
+                  </div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net5_I02">
+                    <span class="elem-tag">I0.2</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Bidón en Base</span>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+
+                  <!-- Bobina de Señalización Verde Q0.3 -->
+                  <div class="ladder-element coil" id="elem_Q03_coil">
+                    <span class="elem-tag">Q0.3</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">Luz Verde (Listo)</span>
+                  </div>
+
+                  <!-- Bobina Set de Memoria Poka-Yoke M0.4 -->
+                  <div class="ladder-element coil coil-set" id="elem_M04_set">
+                    <span class="elem-tag">M0.4</span>
+                    <span class="elem-sym">( S )</span>
+                    <span class="elem-lbl">Lock Poka-Yoke</span>
+                  </div>
+
+                  <!-- Bloque Contador CTU C1 -->
+                  <div class="ladder-block counter-block" id="block_C1">
+                    <div class="block-title">CTU C1</div>
+                    <div class="block-row"><span class="p-name">CU:</span> <span class="p-val" id="c1_cu">0</span></div>
+                    <div class="block-row"><span class="p-name">PV:</span> <span class="p-val">9999</span></div>
+                    <div class="block-row"><span class="p-name">CV:</span> <span class="p-val" id="c1_cv">0</span></div>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+
+                <!-- Sub-escalón: Reset de M0.4 cuando el bidón se retira (I0.2 = 0) -->
+                <div class="ladder-subrung">
+                  <span class="subrung-tag">Desenclavamiento Poka-Yoke:</span>
+                  <div class="ladder-element contact contact-nc" id="elem_sub_I02">
+                    <span class="elem-tag">I0.2</span>
+                    <span class="elem-sym">|/|</span>
+                    <span class="elem-lbl">Retiro Bidón</span>
+                  </div>
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil coil-reset" id="elem_M04_reset">
+                    <span class="elem-tag">M0.4</span>
+                    <span class="elem-sym">( R )</span>
+                    <span class="elem-lbl">Reset Lock</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 6: Gestión de Alarmas y Baliza Roja (Q0.4) -->
+            <div class="ladder-network" id="net6">
+              <div class="net-header">
+                <span class="net-num">Network 6</span>
+                <span class="net-desc">Gestión de Alarmas: Baliza Roja (Q0.4) por Nivel Bajo T1/T2 o Paro de Emergencia</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+
+                  <div class="ladder-branch-parallel">
+                    <div class="ladder-element contact contact-nc" id="elem_net6_I03">
+                      <span class="elem-tag">I0.3</span>
+                      <span class="elem-sym">|/|</span>
+                      <span class="elem-lbl">Falla Nvl T1</span>
+                    </div>
+                    <div class="ladder-element contact contact-nc" id="elem_net6_I04">
+                      <span class="elem-tag">I0.4</span>
+                      <span class="elem-sym">|/|</span>
+                      <span class="elem-lbl">Falla Nvl T2</span>
+                    </div>
+                    <div class="ladder-element contact contact-nc" id="elem_net6_I06">
+                      <span class="elem-tag">I0.6</span>
+                      <span class="elem-sym">|/|</span>
+                      <span class="elem-lbl">E-STOP Oprimido</span>
+                    </div>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil coil-alarm" id="elem_Q04_coil">
+                    <span class="elem-tag">Q0.4</span>
+                    <span class="elem-sym">( )</span>
+                    <span class="elem-lbl">Baliza Roja</span>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NETWORK 7: Rearme de Sistema y Reset Contador (I0.7) -->
+            <div class="ladder-network" id="net7">
+              <div class="net-header">
+                <span class="net-num">Network 7</span>
+                <span class="net-desc">Rearme Manual: Reset Contador C1 y Liberación de Alarmas (I0.7)</span>
+              </div>
+              <div class="net-content">
+                <div class="ladder-rung">
+                  <div class="power-rail left-rail"></div>
+
+                  <div class="ladder-element contact contact-no" id="elem_net7_I07">
+                    <span class="elem-tag">I0.7</span>
+                    <span class="elem-sym">| |</span>
+                    <span class="elem-lbl">Pulsador Reset</span>
+                  </div>
+
+                  <div class="ladder-wire"></div>
+                  <div class="ladder-element coil" id="elem_C1_reset">
+                    <span class="elem-tag">C1</span>
+                    <span class="elem-sym">( R )</span>
+                    <span class="elem-lbl">Reset Contador</span>
+                  </div>
+
+                  <div class="power-rail right-rail"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- PESTAÑA 2: DIAGRAMA DE COMPUERTAS LÓGICAS (IEEE/IEC)                      -->
+    <!-- ========================================================================= -->
+    <section class="tab-pane" id="tab-compuertas">
+      <div class="logic-gates-layout card-surface">
+        <div class="logic-header">
+          <div>
+            <h2>Esquemático Digital de Compuertas Lógicas y Ecuaciones Booleanas</h2>
+            <p class="section-sub">
+              Traducción directa de la lógica combinacional y secuencial del PLC a compuertas normalizadas IEEE/IEC.
+              Las líneas cambian de color en tiempo real (<span class="val-high">Verde = Nivel Alto 1</span>, <span class="val-low">Gris = Nivel Bajo 0</span>) según la simulación en vivo.
+            </p>
+          </div>
+          <div class="logic-mode-toggle">
+            <span class="lbl-mode">Origen de Señales:</span>
+            <button class="btn-toggle-logic active" id="btnSyncSim">Sincronizado con Simulación</button>
+            <button class="btn-toggle-logic" id="btnManualLogic">Modo Pruebas Manuales</button>
+          </div>
+        </div>
+
+        <!-- Contenedor SVG Interactivo del Esquemático -->
+        <div class="logic-canvas-wrap">
+          <svg id="logicSvg" viewBox="0 0 1060 620" class="logic-svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748B" />
+              </marker>
+              <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#16A34A" />
+              </marker>
+            </defs>
+
+            <!-- ================= ENTRADAS (Columna Izquierda x=40) ================= -->
+            <g id="logicInputsGroup" transform="translate(40, 30)">
+              <text x="50" y="0" font-size="12" font-weight="700" fill="#1E3A8A">ENTRADAS PLC (24V)</text>
+              
+              <!-- I0.0 START -->
+              <g class="logic-input-node" id="node_I00" transform="translate(0, 20)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I00"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.0 START</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I00"/>
+              </g>
+
+              <!-- I0.1 STOP -->
+              <g class="logic-input-node" id="node_I01" transform="translate(0, 70)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I01"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.1 STOP</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I01"/>
+              </g>
+
+              <!-- I0.2 SENSOR BIDÓN -->
+              <g class="logic-input-node" id="node_I02" transform="translate(0, 120)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I02"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.2 BIDÓN</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I02"/>
+              </g>
+
+              <!-- I0.3 NVL T1 -->
+              <g class="logic-input-node" id="node_I03" transform="translate(0, 170)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I03"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.3 NVL T1</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I03"/>
+              </g>
+
+              <!-- I0.4 NVL T2 -->
+              <g class="logic-input-node" id="node_I04" transform="translate(0, 220)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I04"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.4 NVL T2</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I04"/>
+              </g>
+
+              <!-- I0.5 RECETA -->
+              <g class="logic-input-node" id="node_I05" transform="translate(0, 270)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I05"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.5 RECETA</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I05"/>
+              </g>
+
+              <!-- I0.6 E-STOP -->
+              <g class="logic-input-node" id="node_I06" transform="translate(0, 320)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I06"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.6 E-STOP</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I06"/>
+              </g>
+
+              <!-- I0.7 RESET -->
+              <g class="logic-input-node" id="node_I07" transform="translate(0, 370)">
+                <rect x="0" y="0" width="105" height="28" rx="4" class="inp-box" id="box_I07"/>
+                <text x="8" y="18" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">I0.7 RESET</text>
+                <circle cx="105" cy="14" r="4" class="node-port" id="port_I07"/>
+              </g>
+            </g>
+
+            <!-- ================= BLOQUE SR FLIP-FLOP / M0.0 (x=240, y=50) ================= -->
+            <g id="blockSR_M00" transform="translate(250, 50)">
+              <rect x="0" y="0" width="130" height="90" rx="6" class="gate-body" id="bodySR_M00"/>
+              <text x="65" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#0F172A">SR FLIP-FLOP</text>
+              <text x="65" y="34" text-anchor="middle" font-size="9" fill="#64748B">MEMORIA M0.0</text>
+              <text x="12" y="55" font-size="10" font-weight="700">S (Set)</text>
+              <text x="12" y="75" font-size="10" font-weight="700">R (Reset)</text>
+              <text x="110" y="55" font-size="11" font-weight="700">Q</text>
+              <circle cx="0" cy="52" r="4" class="node-port"/>
+              <circle cx="0" cy="72" r="4" class="node-port"/>
+              <circle cx="130" cy="52" r="4" class="node-port" id="port_M00_out"/>
+            </g>
+
+            <!-- COMPUERTA AND PERMISIVOS (x=175, y=30) -->
+            <g id="gateAND_Permisivos" transform="translate(180, 50)">
+              <!-- Símbolo de compuerta AND -->
+              <path d="M0,0 L18,0 C28,0 35,8 35,22 C35,36 28,44 18,44 L0,44 Z" class="gate-symbol" id="sym_gate_and_perm"/>
+              <text x="15" y="26" font-size="10" font-weight="bold" fill="#334155">&amp;</text>
+            </g>
+
+            <!-- ================= ETAPA 1: TEMPORIZADOR TON T1 (4s) ================= -->
+            <g id="logicBlockT1" transform="translate(440, 50)">
+              <rect x="0" y="0" width="100" height="70" rx="6" class="gate-body" id="bodyT1"/>
+              <text x="50" y="18" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">TON T1</text>
+              <text x="50" y="32" text-anchor="middle" font-size="9" fill="#0284C7">PT = 4.0s (Base)</text>
+              <text x="10" y="52" font-size="9" font-weight="600">IN</text>
+              <text x="78" y="52" font-size="9" font-weight="600">Q (DN)</text>
+              <circle cx="0" cy="48" r="4" class="node-port"/>
+              <circle cx="100" cy="48" r="4" class="node-port" id="port_T1_DN"/>
+            </g>
+
+            <!-- Inversor NOT para Q0.0 -->
+            <g id="gateNOT_Q00" transform="translate(580, 40)">
+              <polygon points="0,0 24,12 0,24" class="gate-symbol"/>
+              <circle cx="28" cy="12" r="3.5" class="gate-inv-bubble"/>
+            </g>
+
+            <!-- Salida Q0.0: Electroválvula Base -->
+            <g class="logic-output-node" id="node_Q00" transform="translate(850, 40)">
+              <rect x="0" y="0" width="160" height="36" rx="6" class="out-box" id="box_Q00"/>
+              <text x="12" y="16" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace">Q0.0 EV1 BASE</text>
+              <text x="12" y="28" font-size="8.5" fill="#64748B">Dosificación Agua</text>
+              <circle cx="0" cy="18" r="4" class="node-port"/>
+            </g>
+
+            <!-- ================= ETAPA 2: TEMPORIZADORES T2 / T3 Y COMPUERTAS ================= -->
+            <!-- Selector Multiplexor de Receta -->
+            <g id="logicBlockT2" transform="translate(440, 150)">
+              <rect x="0" y="0" width="100" height="60" rx="6" class="gate-body" id="bodyT2"/>
+              <text x="50" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">TON T2</text>
+              <text x="50" y="28" text-anchor="middle" font-size="8.5" fill="#1D4ED8">PT = 2.0s (Hogar)</text>
+              <circle cx="0" cy="42" r="4" class="node-port"/>
+              <circle cx="100" cy="42" r="4" class="node-port" id="port_T2_DN"/>
+            </g>
+
+            <g id="logicBlockT3" transform="translate(440, 230)">
+              <rect x="0" y="0" width="100" height="60" rx="6" class="gate-body" id="bodyT3"/>
+              <text x="50" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">TON T3</text>
+              <text x="50" y="28" text-anchor="middle" font-size="8.5" fill="#1D4ED8">PT = 5.0s (Ind)</text>
+              <circle cx="0" cy="42" r="4" class="node-port"/>
+              <circle cx="100" cy="42" r="4" class="node-port" id="port_T3_DN"/>
+            </g>
+
+            <!-- Salida Q0.1: Electroválvula Concentrado -->
+            <g class="logic-output-node" id="node_Q01" transform="translate(850, 180)">
+              <rect x="0" y="0" width="160" height="36" rx="6" class="out-box" id="box_Q01"/>
+              <text x="12" y="16" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace">Q0.1 EV2 CONCENT.</text>
+              <text x="12" y="28" font-size="8.5" fill="#64748B">Dosificación Activo</text>
+              <circle cx="0" cy="18" r="4" class="node-port"/>
+            </g>
+
+            <!-- ================= ETAPA 3: TEMPORIZADOR T4 Y MOTOR MEZCLADOR ================= -->
+            <g id="logicBlockT4" transform="translate(630, 270)">
+              <rect x="0" y="0" width="100" height="60" rx="6" class="gate-body" id="bodyT4"/>
+              <text x="50" y="16" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">TON T4</text>
+              <text x="50" y="28" text-anchor="middle" font-size="8.5" fill="#D97706">PT = 3.0s / 4.0s</text>
+              <circle cx="0" cy="42" r="4" class="node-port"/>
+              <circle cx="100" cy="42" r="4" class="node-port" id="port_T4_DN"/>
+            </g>
+
+            <!-- Salida Q0.2: Motor Mezclador -->
+            <g class="logic-output-node" id="node_Q02" transform="translate(850, 270)">
+              <rect x="0" y="0" width="160" height="36" rx="6" class="out-box" id="box_Q02"/>
+              <text x="12" y="16" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace">Q0.2 MOTOR MEZCLA</text>
+              <text x="12" y="28" font-size="8.5" fill="#64748B">Homogeneizador</text>
+              <circle cx="0" cy="18" r="4" class="node-port"/>
+            </g>
+
+            <!-- ================= ETAPA 4: LUZ VERDE Q0.3 Y POKA-YOKE M0.4 ================= -->
+            <!-- SR Flip-Flop Poka-Yoke M0.4 -->
+            <g id="blockSR_M04" transform="translate(630, 370)">
+              <rect x="0" y="0" width="120" height="75" rx="6" class="gate-body" id="bodySR_M04"/>
+              <text x="60" y="18" text-anchor="middle" font-size="10" font-weight="700" fill="#0F172A">SR FLIP-FLOP</text>
+              <text x="60" y="30" text-anchor="middle" font-size="8.5" fill="#DC2626">POKA-YOKE (M0.4)</text>
+              <text x="10" y="48" font-size="9" font-weight="700">S (Fin Ciclo)</text>
+              <text x="10" y="66" font-size="9" font-weight="700">R (!I0.2)</text>
+              <circle cx="0" cy="45" r="4" class="node-port"/>
+              <circle cx="0" cy="62" r="4" class="node-port"/>
+              <circle cx="120" cy="45" r="4" class="node-port" id="port_M04_out"/>
+            </g>
+
+            <!-- Salida Q0.3: Luz Verde Listo -->
+            <g class="logic-output-node" id="node_Q03" transform="translate(850, 380)">
+              <rect x="0" y="0" width="160" height="36" rx="6" class="out-box" id="box_Q03"/>
+              <text x="12" y="16" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace">Q0.3 LUZ VERDE</text>
+              <text x="12" y="28" font-size="8.5" fill="#64748B">Ciclo Completado</text>
+              <circle cx="0" cy="18" r="4" class="node-port"/>
+            </g>
+
+            <!-- ================= GESTIÓN DE ALARMAS: COMPUERTA OR Y Q0.4 ================= -->
+            <g id="gateOR_Alarma" transform="translate(480, 480)">
+              <!-- Símbolo Compuerta OR -->
+              <path d="M0,0 C10,12 10,32 0,44 C15,44 26,38 35,22 C26,6 15,0 0,0 Z" class="gate-symbol" id="sym_gate_or_alarm"/>
+              <text x="15" y="26" font-size="10" font-weight="bold" fill="#334155">&gt;=1</text>
+            </g>
+
+            <!-- Salida Q0.4: Baliza Roja / Alarma -->
+            <g class="logic-output-node" id="node_Q04" transform="translate(850, 480)">
+              <rect x="0" y="0" width="160" height="36" rx="6" class="out-box" id="box_Q04"/>
+              <text x="12" y="16" font-size="10" font-weight="700" font-family="'JetBrains Mono', monospace">Q0.4 BALIZA ROJA</text>
+              <text x="12" y="28" font-size="8.5" fill="#64748B">Alarma / Paro Emerg.</text>
+              <circle cx="0" cy="18" r="4" class="node-port"/>
+            </g>
+
+            <!-- ================= LÍNEAS DE CONEXIÓN DINÁMICAS (WIRES) ================= -->
+            <!-- Wire M0.0 -> T1 -->
+            <path id="wire_M00_T1" d="M380 102 L440 98" class="logic-wire wire-low"/>
+            <!-- Wire T1 -> NOT -> Q0.0 -->
+            <path id="wire_T1_Q00" d="M540 98 L580 52 M608 52 L850 58" class="logic-wire wire-low"/>
+            <!-- Wire T1.DN -> T2 / T3 -->
+            <path id="wire_T1DN_T2" d="M540 98 L560 98 L560 192 L440 192" class="logic-wire wire-low"/>
+            <path id="wire_T1DN_T3" d="M560 192 L560 272 L440 272" class="logic-wire wire-low"/>
+            <!-- Wire MUX -> Q0.1 -->
+            <path id="wire_MUX_Q01" d="M540 192 L850 198" class="logic-wire wire-low"/>
+            <!-- Wire T2/T3 -> T4 -->
+            <path id="wire_Tconc_T4" d="M540 272 L630 312" class="logic-wire wire-low"/>
+            <!-- Wire T4 -> Q0.2 -->
+            <path id="wire_T4_Q02" d="M630 312 L850 288" class="logic-wire wire-low"/>
+            <!-- Wire T4.DN -> M0.4 Set -->
+            <path id="wire_T4DN_M04" d="M730 312 L770 312 L770 415 L630 415" class="logic-wire wire-low"/>
+            <!-- Wire M0.4 -> Q0.3 -->
+            <path id="wire_M04_Q03" d="M750 415 L850 398" class="logic-wire wire-low"/>
+            <!-- Wire Alarmas -> Q0.4 -->
+            <path id="wire_Alarm_Q04" d="M515 502 L850 498" class="logic-wire wire-low"/>
+          </svg>
+        </div>
+
+        <!-- Ecuaciones Booleanas Formales del Sistema -->
+        <div class="boolean-equations-grid">
+          <div class="eqn-card">
+            <div class="eqn-title">Enclavamiento del Sistema (M0.0)</div>
+            <div class="eqn-code">M0.0 = (I0.0 + M0.0) · NOT(I0.1) · I0.2 · I0.3 · I0.4 · I0.6 · NOT(M0.4)</div>
+            <div class="eqn-note">El sistema solo arranca si hay bidón (I0.2), tanques OK (I0.3, I0.4), sin E-Stop (I0.6) y sin bloqueo Poka-Yoke previo.</div>
+          </div>
+
+          <div class="eqn-card">
+            <div class="eqn-title">Electroválvula Base Agua (Q0.0)</div>
+            <div class="eqn-code">Q0.0 = M0.0 · NOT(T1.DN)</div>
+            <div class="eqn-note">Se energiza durante los primeros 4.0 segundos mientras el temporizador T1 no haya alcanzado el tiempo preestablecido (PT).</div>
+          </div>
+
+          <div class="eqn-card">
+            <div class="eqn-title">Electroválvula Concentrado (Q0.1)</div>
+            <div class="eqn-code">Q0.1 = M0.0 · T1.DN · [(NOT(I0.5) · NOT(T2.DN)) + (I0.5 · NOT(T3.DN))]</div>
+            <div class="eqn-note">Inicia al finalizar T1. Si I0.5=0 dosifica 2.0s (T2); si I0.5=1 dosifica 5.0s (T3).</div>
+          </div>
+
+          <div class="eqn-card">
+            <div class="eqn-title">Motor Agitador Mezclador (Q0.2)</div>
+            <div class="eqn-code">Q0.2 = M0.0 · [(NOT(I0.5) · T2.DN) + (I0.5 · T3.DN)] · NOT(T4.DN)</div>
+            <div class="eqn-note">Homogeneiza el fluido tras finalizar el concentrado durante 3.0s (Hogar) o 4.0s (Industrial).</div>
+          </div>
+
+          <div class="eqn-card">
+            <div class="eqn-title">Luz Verde y Memoria Poka-Yoke (Q0.3 & M0.4)</div>
+            <div class="eqn-code">M0.4(SET) = T4.DN · I0.2 &nbsp;|&nbsp; M0.4(RESET) = NOT(I0.2)<br>Q0.3 = M0.4 · I0.2</div>
+            <div class="eqn-note">Al terminar T4, M0.4 se enclava bloqueando nuevos ciclos. Q0.3 brilla avisando al operario para retirar el bidón. M0.4 solo se libera cuando el bidón es retirado (I0.2 pasa a 0).</div>
+          </div>
+
+          <div class="eqn-card">
+            <div class="eqn-title">Baliza Roja de Alarma (Q0.4)</div>
+            <div class="eqn-code">Q0.4 = NOT(I0.3) + NOT(I0.4) + NOT(I0.6)</div>
+            <div class="eqn-note">Activa alarma visual si cualquier tanque baja del 15% o si se oprime el paro de emergencia.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- PESTAÑA 3: INGENIERÍA DEL PROCESO, ALCANCE Y TABLA I/O                     -->
+    <!-- ========================================================================= -->
+    <section class="tab-pane" id="tab-ingenieria">
+      <div class="doc-layout card-surface">
+        <div class="doc-header">
+          <h2>Memoria Técnica y Arquitectura de Automatización Industrial</h2>
+          <p class="section-sub">
+            Especificación formal de ingeniería para la modernización de planta: control discreto secuencial, análisis de mermas y mapa de memoria del PLC.
+          </p>
+        </div>
+
+        <div class="doc-grid">
+          <!-- 1. DIAGNÓSTICO DEL PROBLEMA -->
+          <div class="doc-card">
+            <div class="card-badge">SECCIÓN 1</div>
+            <h3>1. Diagnóstico del Problema y Justificación Económica</h3>
+            <p>
+              La operación histórica de dosificación a granel se realizaba mediante manipulación manual con válvulas de mariposa de accionamiento manual y jarras plásticas graduadas. Este método generaba cuatro problemas críticos:
+            </p>
+            <ul class="bullet-list">
+              <li>
+                <strong>Merma sistemática de materia prima (14.2% promedio):</strong> Sobrellenado por error de paralaje del operario y goteo constante al trasvasar concentrados activos.
+              </li>
+              <li>
+                <strong>Inconsistencia química en diluciones:</strong> Variabilidad en la concentración de tensioactivos biodegradables y bactericidas de hasta ±22%, provocando reclamos por falta de viscosidad o formación excesiva de espuma.
+              </li>
+              <li>
+                <strong>Riesgo ergonómico y de seguridad ocupacional:</strong> Salpicaduras accidentales de productos alcalinos/ácidos sobre el personal y fatiga por carga repetitiva de garrafas de 20 litros.
+              </li>
+              <li>
+                <strong>Pérdida de trazabilidad de inventario:</strong> Descuadre entre los insumos químicos descargados en bodega y las unidades comercializadas al finalizar el turno.
+              </li>
+            </ul>
+            <div class="kpi-banner">
+              <div class="kpi-item">
+                <span class="kpi-val">-98.5%</span>
+                <span class="kpi-lbl">Mermas por derrames</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-val">&lt; 0.5%</span>
+                <span class="kpi-lbl">Tolerancia de mezcla</span>
+              </div>
+              <div class="kpi-item">
+                <span class="kpi-val">100%</span>
+                <span class="kpi-lbl">Trazabilidad por lote</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. ALCANCE DEL SISTEMA -->
+          <div class="doc-card">
+            <div class="card-badge">SECCIÓN 2</div>
+            <h3>2. Alcance Técnico y Filosofía de Control</h3>
+            <p>
+              El proyecto implementa una celda de manufactura discreta con controlador lógico programable (PLC) bajo estándar IEC 61131-3:
+            </p>
+            <ul class="bullet-list">
+              <li>
+                <strong>Control secuencial determinístico:</strong> Ejecución cronometrada por bloques de temporización al retardo a la conexión (TON) con base de tiempo en milisegundos.
+              </li>
+              <li>
+                <strong>Protección de marcha en seco y enclavamiento por nivel:</strong> Monitoreo continuo de boyas de nivel capacitivas industriales (I0.3 e I0.4) para evitar cavitación o diluciones incompletas.
+              </li>
+              <li>
+                <strong>Lógica Poka-Yoke (A prueba de errores):</strong> Mecanismo de enclavamiento por software que inhabilita cualquier nuevo pulso de arranque (I0.0) hasta que el operario retire físicamente el envase finalizado de la base receptora.
+              </li>
+              <li>
+                <strong>Flexibilidad multirreceta:</strong> Selector físico de 2 posiciones para conmutar entre producto para consumo doméstico (baja viscosidad) y producto industrial de alta densidad de tensoactivo.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 3. TABLA OFICIAL DE ASIGNACIÓN DE VARIABLES (I/O) -->
+        <div class="table-container-card">
+          <div class="card-badge">SECCIÓN 3</div>
+          <h3>3. Arquitectura de Hardware y Tabla Oficial de Asignación de Variables (I/O)</h3>
+          <p class="table-intro">
+            Mapeo de señales físicas conectadas al bloque de terminales del PLC (S7-1200 / CPU 1214C DC/DC/DC). Nivel lógico 24V DC industrial (IEC 61131-2 Tipo 1).
+          </p>
+
+          <div class="table-responsive">
+            <table class="industrial-table">
+              <thead>
+                <tr>
+                  <th>Dirección PLC</th>
+                  <th>Símbolo</th>
+                  <th>Tipo de Señal</th>
+                  <th>Dispositivo de Campo</th>
+                  <th>Estado Normal</th>
+                  <th>Función en el Proceso</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="addr-badge">I0.0</span></td>
+                  <td><strong>PB_START</strong></td>
+                  <td>Digital 24V DC</td>
+                  <td>Pulsador rasante verde</td>
+                  <td>NA (Normal Abierto)</td>
+                  <td>Inicia la secuencia de llenado si los permisivos están activos.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.1</span></td>
+                  <td><strong>PB_STOP</strong></td>
+                  <td>Digital 24V DC</td>
+                  <td>Pulsador rasante rojo</td>
+                  <td>NC (Normal Cerrado)</td>
+                  <td>Detiene la secuencia de forma controlada en cualquier instante.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.2</span></td>
+                  <td><strong>PE_BIDON</strong></td>
+                  <td>Digital 24V DC PNP</td>
+                  <td>Sensor óptico retro-reflectivo M18</td>
+                  <td>NA (Luz cuando detecta)</td>
+                  <td>Detecta presencia de envase en la base receptora. Clave Poka-Yoke.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.3</span></td>
+                  <td><strong>LS_NIVEL_T1</strong></td>
+                  <td>Digital 24V DC PNP</td>
+                  <td>Boya capacitiva de nivel T1</td>
+                  <td>NA (Cierra si nivel &gt; 15%)</td>
+                  <td>Permisivo de Tanque 1 (Base Agua). Abre si el nivel es crítico.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.4</span></td>
+                  <td><strong>LS_NIVEL_T2</strong></td>
+                  <td>Digital 24V DC PNP</td>
+                  <td>Boya capacitiva de nivel T2</td>
+                  <td>NA (Cierra si nivel &gt; 15%)</td>
+                  <td>Permisivo de Tanque 2 (Concentrado). Abre si el nivel es crítico.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.5</span></td>
+                  <td><strong>SEL_RECETA</strong></td>
+                  <td>Digital 24V DC</td>
+                  <td>Selector rotativo de 2 posiciones</td>
+                  <td>0: Hogar / 1: Industrial</td>
+                  <td>Conmuta tiempos de dosificación de concentrado (2s vs 5s) y mezcla.</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.6</span></td>
+                  <td><strong>ES_PARO</strong></td>
+                  <td>Digital 24V DC</td>
+                  <td>Pulsador tipo hongo con retención</td>
+                  <td>NC (Normal Cerrado - Seguro)</td>
+                  <td>Paro de emergencia instantáneo (Categoría 0 según ISO 13850).</td>
+                </tr>
+                <tr>
+                  <td><span class="addr-badge">I0.7</span></td>
+                  <td><strong>PB_RESET</strong></td>
+                  <td>Digital 24V DC</td>
+                  <td>Pulsador azul momentáneo</td>
+                  <td>NA (Normal Abierto)</td>
+                  <td>Rearme de memoria de fallas y puesta a cero del contador C1.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><span class="addr-badge out">Q0.0</span></td>
+                  <td><strong>EV1_BASE</strong></td>
+                  <td>Salida a Relé / MOSFET</td>
+                  <td>Electroválvula solenoide 2/2 24V</td>
+                  <td>Desenergizada (NC)</td>
+                  <td>Apertura de alimentación de Base Agua hacia cámara de mezcla.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><span class="addr-badge out">Q0.1</span></td>
+                  <td><strong>EV2_CONC</strong></td>
+                  <td>Salida a Relé / MOSFET</td>
+                  <td>Electroválvula solenoide 2/2 24V</td>
+                  <td>Desenergizada (NC)</td>
+                  <td>Apertura de alimentación de Concentrado Activo hacia cámara.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><span class="addr-badge out">Q0.2</span></td>
+                  <td><strong>MTR_MEZCLA</strong></td>
+                  <td>Salida a Relé / Driver</td>
+                  <td>Motor DC / Relé de estado sólido</td>
+                  <td>Apagado</td>
+                  <td>Acciona el agitador de paletas para homogeneizar la fórmula.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><span class="addr-badge out">Q0.3</span></td>
+                  <td><strong>LP_LISTO</strong></td>
+                  <td>Salida a Transistor 24V</td>
+                  <td>Piloto verde / Baliza LED</td>
+                  <td>Apagado</td>
+                  <td>Indica fin de ciclo y autoriza al operario a retirar el envase.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><span class="addr-badge out">Q0.4</span></td>
+                  <td><strong>LP_ALARMA</strong></td>
+                  <td>Salida a Transistor 24V</td>
+                  <td>Baliza roja estroboscópica / Sirena</td>
+                  <td>Apagado</td>
+                  <td>Alerta por nivel crítico en tanques o paro de emergencia activo.</td>
+                </tr>
+                <tr class="mem-row">
+                  <td><span class="addr-badge mem">M0.0</span></td>
+                  <td><strong>SYS_RUN</strong></td>
+                  <td>Marca Interna (Bit)</td>
+                  <td>Registro booleano CPU</td>
+                  <td>0 (Inactivo)</td>
+                  <td>Auto-enclavamiento de ciclo activo gobernando toda la secuencia.</td>
+                </tr>
+                <tr class="mem-row">
+                  <td><span class="addr-badge mem">M0.4</span></td>
+                  <td><strong>LOCK_POKA</strong></td>
+                  <td>Marca Interna (Bit)</td>
+                  <td>Registro booleano CPU</td>
+                  <td>0 (Liberado)</td>
+                  <td>Enclavamiento Poka-Yoke: bloquea reinicio hasta detectar I0.2 = 0.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 4. CICLO SCAN Y LÓGICA POKA-YOKE -->
+        <div class="doc-card full-width">
+          <div class="card-badge">SECCIÓN 4</div>
+          <h3>4. Descripción del Ciclo Scan y Mecanismo Poka-Yoke Anti-Doble Llenado</h3>
+          <div class="scan-flow-explanation">
+            <div class="scan-step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h4>Lectura del Mapeo de Entradas (PII)</h4>
+                <p>La CPU actualiza la imagen de proceso de entradas (I0.0 a I0.7) en un instante t0, aplicando filtro antirrebote de hardware (3ms).</p>
+              </div>
+            </div>
+            <div class="scan-step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h4>Ejecución Determinística de la Lógica (Ladder Rungs)</h4>
+                <p>Se evalúan secuencialmente los 7 escalones de izquierda a derecha y de arriba a abajo. Se calculan los temporizadores TON y memorias M0.0 y M0.4.</p>
+              </div>
+            </div>
+            <div class="scan-step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h4>Escritura en Imagen de Salidas (PIQ)</h4>
+                <p>Las salidas físicas Q0.0 a Q0.4 se actualizan sincrónicamente al terminar el escaneo, garantizando que no existan estados transitorios espurios en las válvulas.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="poka-yoke-deepdive">
+            <h4>¿Cómo Garantiza el PLC que no ocurra un Doble Llenado por Error Humano?</h4>
+            <p>
+              En una estación manual convencional, si un operario distraído vuelve a presionar el pedal o botón de inicio mientras el bidón lleno continúa en la base, el líquido rebosa, derramando producto químico costoso e irritante.
+            </p>
+            <p>
+              En CleanDose PLC, la lógica implementa el bit auxiliar <code>M0.4 (Poka-Yoke Lock)</code>:
+            </p>
+            <div class="code-box-inline">
+              // Cuando finaliza la etapa de mezcla (T4.DN = 1) y el bidón sigue presente (I0.2 = 1):
+              SET(M0.4);
+              
+              // En el escalón de arranque (Network 1):
+              M0.0 = (I0.0 + M0.0) · ... · NOT(M0.4); 
+              // -> Como M0.4 = 1, NOT(M0.4) = 0, haciendo IMPOSIBLE energizar M0.0 aunque se pulse I0.0 repetidamente.
+              
+              // El único evento capaz de resetear M0.4 es la transición a cero de I0.2:
+              IF (I0.2 == 0) THEN RESET(M0.4);
+            </div>
+            <p>
+              Este diseño cumple con el principio de ingeniería Poka-Yoke: <em>la máquina no confía en la atención del operador; la física del sensor gobierna el permiso de rearme.</em>
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- PESTAÑA 4: MANUAL OPERATIVO & GUÍA DE MIGRACIÓN A PROTEUS                 -->
+    <!-- ========================================================================= -->
+    <section class="tab-pane" id="tab-proteus">
+      <div class="proteus-layout card-surface">
+        <div class="proteus-header">
+          <h2>Manual de Demostración y Guía de Migración a Proteus VSM</h2>
+          <p class="section-sub">
+            Protocolo de operación para pruebas de laboratorio y guía de diseño circuital para simular esta estación en Proteus con microcontroladores PIC/Arduino o lógica digital cableada.
+          </p>
+        </div>
+
+        <div class="prot-grid">
+          <!-- GUÍA DE DEMOSTRACIÓN PASO A PASO -->
+          <div class="prot-card">
+            <div class="card-badge">MANUAL RÁPIDO</div>
+            <h3>Protocolo de Demostración en Vivo (Paso a Paso)</h3>
+            <ol class="steps-list">
+              <li>
+                <strong>Verificación de Tanques (I0.3 e I0.4):</strong> Asegúrese de que ambos tanques tengan &gt; 15% de nivel. Los LEDs I0.3 e I0.4 en el rack del PLC deben estar encendidos en verde.
+              </li>
+              <li>
+                <strong>Prueba de Enclavamiento Preventivo (Sin Bidón):</strong> Pulse el botón verde <code>START (I0.0)</code> sin colocar el bidón. Observe que el sistema NO arranca debido al contacto abierto <code>I0.2</code> en Network 1.
+              </li>
+              <li>
+                <strong>Inserción de Envase:</strong> Haga clic en <strong>"Colocar Bidón Vacío"</strong> en la Zona A. El sensor óptico <code>I0.2</code> se activará con haz láser verde.
+              </li>
+              <li>
+                <strong>Selección de Receta:</strong> Gire la perilla de receta a <em>Fórmula Hogar</em> (4s base, 2s concentrado) o <em>Fórmula Industrial</em> (4s base, 5s concentrado).
+              </li>
+              <li>
+                <strong>Inicio de Dosificación:</strong> Pulse <code>START (I0.0)</code>. Se activará EV1 (Q0.0), luego EV2 (Q0.1), y finalmente el motor agitador MTR1 (Q0.2). Observe la fluidez de las tuberías y el llenado progresivo.
+              </li>
+              <li>
+                <strong>Comprobación Poka-Yoke:</strong> Con el bidón ya lleno y la luz verde (Q0.3) encendida, vuelva a presionar <code>START</code>. ¡El sistema rechazará el ciclo! Solo tras pulsar <strong>"Retirar Bidón Lleno"</strong> el sistema quedará disponible para el siguiente ciclo.
+              </li>
+              <li>
+                <strong>Prueba de Fallas Críticas:</strong> Durante la dosificación, pulse el hongo de <code>PARO DE EMERGENCIA (I0.6)</code> o haga clic en <code>"Vaciar T1 (&lt;15%)"</code>: todas las salidas se desenergizarán en menos de 50 ms y se activará la baliza roja (Q0.4).
+              </li>
+            </ol>
+          </div>
+
+          <!-- MIGRACIÓN A PROTEUS VSM -->
+          <div class="prot-card">
+            <div class="card-badge">GUÍA PROTEUS</div>
+            <h3>Estrategias de Implementación en Proteus (ISIS / VSM)</h3>
+            <p>
+              Para replicar esta arquitectura industrial en Proteus existen tres metodologías estándar de laboratorio:
+            </p>
+            <div class="methodology-box">
+              <div class="meth-item">
+                <span class="meth-tag">Método A (Recomendado)</span>
+                <h4>Arduino Uno / Mega en Proteus con FSM C++</h4>
+                <p>
+                  Se utiliza el modelo simulable de Arduino en Proteus. El firmware replica la estructura de escaneo cíclico del PLC mediante una máquina de estados finitos no bloqueante (sin la función delay, usando millis()).
+                </p>
+              </div>
+              <div class="meth-item">
+                <span class="meth-tag">Método B (Ladder a PIC)</span>
+                <h4>PIC16F877A con LDmicro</h4>
+                <p>
+                  Se diseña el diagrama Ladder idéntico en el software libre <em>LDmicro</em>. Se compila directamente a archivo <code>.HEX</code> y se carga en el microcontrolador PIC en Proteus.
+                </p>
+              </div>
+              <div class="meth-item">
+                <span class="meth-tag">Método C (Lógica Discreta)</span>
+                <h4>Compuertas 74LS + Temporizadores 555</h4>
+                <p>
+                  Para asignaturas de circuitos digitales puros: compuertas 74LS08 (AND), 74LS32 (OR), 74LS04 (NOT), biestable 74LS74 (SR Latch) y temporizadores 555 monoestables.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLA DE EQUIVALENCIA DE PINES Y ESQUEMA ELÉCTRICO -->
+        <div class="table-container-card">
+          <div class="card-badge">CIRCUITOS PROTEUS</div>
+          <h3>Tabla de Equivalencia de Pines y Etapa de Acondicionamiento (Arduino / Proteus)</h3>
+          
+          <div class="table-responsive">
+            <table class="industrial-table">
+              <thead>
+                <tr>
+                  <th>Señal PLC</th>
+                  <th>Pin Arduino (Proteus)</th>
+                  <th>Circuito de Entrada / Interfaz</th>
+                  <th>Componentes en Proteus</th>
+                  <th>Acción en Simulación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>I0.0 (Start)</code></td>
+                  <td>Pin D2</td>
+                  <td>Pulsador con resistencia Pull-Down 10kΩ</td>
+                  <td>BUTTON + RES 10k + LED Verde</td>
+                  <td>Envía 5V (HIGH) al pulsar.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.1 (Stop)</code></td>
+                  <td>Pin D3</td>
+                  <td>Pulsador normalmente cerrado / Pull-Up</td>
+                  <td>SWITCH + RES 10k</td>
+                  <td>Nivel 5V en reposo, 0V al abrir.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.2 (Sensor Bidón)</code></td>
+                  <td>Pin D4</td>
+                  <td>Interruptor lógico o par optoacoplador</td>
+                  <td>LOGICSTATE o SW-SPST</td>
+                  <td>Simula presencia física del contenedor.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.3 (Nivel T1)</code></td>
+                  <td>Pin D5</td>
+                  <td>Boya capacitiva con Pull-Up interno</td>
+                  <td>LOGICSTATE (1 = Lleno, 0 = Vacío)</td>
+                  <td>Permisivo de Tanque de Agua.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.4 (Nivel T2)</code></td>
+                  <td>Pin D6</td>
+                  <td>Boya capacitiva con Pull-Up interno</td>
+                  <td>LOGICSTATE (1 = Lleno, 0 = Vacío)</td>
+                  <td>Permisivo de Tanque de Concentrado.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.5 (Receta)</code></td>
+                  <td>Pin D7</td>
+                  <td>Interruptor de 2 posiciones</td>
+                  <td>SPDT Switch</td>
+                  <td>0 = Receta Hogar, 1 = Industrial.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.6 (E-Stop)</code></td>
+                  <td>Pin D8</td>
+                  <td>Pulsador con enclavamiento tipo Lock</td>
+                  <td>PUSH-BUTTON-LOCKING (NC)</td>
+                  <td>Corta la alimentación de control al pulsar.</td>
+                </tr>
+                <tr>
+                  <td><code>I0.7 (Reset)</code></td>
+                  <td>Pin D9</td>
+                  <td>Pulsador con Pull-Down</td>
+                  <td>BUTTON + RES 10k</td>
+                  <td>Pone a cero la variable de contador.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><code>Q0.0 (EV1 Base)</code></td>
+                  <td>Pin D10</td>
+                  <td>Optoacoplador PC817 + Transistor TIP122 + Relé 24V</td>
+                  <td>PC817 + RELAY + DIODE 1N4007 + SOLENOID</td>
+                  <td>Abre válvula y enciende indicador.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><code>Q0.1 (EV2 Conc)</code></td>
+                  <td>Pin D11</td>
+                  <td>Optoacoplador PC817 + Transistor TIP122 + Relé 24V</td>
+                  <td>PC817 + RELAY + DIODE 1N4007 + SOLENOID</td>
+                  <td>Dosifica concentrado activo.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><code>Q0.2 (Motor)</code></td>
+                  <td>Pin D12</td>
+                  <td>Driver L298N o Relé con diodo amortiguador</td>
+                  <td>MOTOR-DC + TIP122 + DIODE 1N4007</td>
+                  <td>Gira motor agitador en Proteus.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><code>Q0.3 (Listo)</code></td>
+                  <td>Pin A0</td>
+                  <td>Resistencia limitadora 330Ω + LED Verde</td>
+                  <td>LED-GREEN + RES 330R</td>
+                  <td>Señaliza fin de ciclo al operario.</td>
+                </tr>
+                <tr class="output-row">
+                  <td><code>Q0.4 (Alarma)</code></td>
+                  <td>Pin A1</td>
+                  <td>Transistor NPN 2N2222 + Zumbador / LED Rojo</td>
+                  <td>BUZZER + LED-RED + 2N2222</td>
+                  <td>Baliza sonora/visual ante emergencia.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CÓDIGO FUENTE LISTO PARA PROTEUS (ARDUINO / C++) -->
+        <div class="code-export-section">
+          <div class="code-header">
+            <div>
+              <h4>Código C++ Listo para Compilar y Cargar en Proteus VSM</h4>
+              <span class="code-subtitle">Estructura FSM no bloqueante con emulación de ciclo scan de PLC de 50ms</span>
+            </div>
+            <button class="btn-copy-code" id="btnCopyCode">📋 Copiar Código C++</button>
+          </div>
+
+          <pre class="code-block"><code id="codeCpp">// =====================================================================
+// CleanDose PLC - Firmware de Emulación para Proteus VSM (Arduino Uno)
+// Arquitectura: Máquina de Estados Finita (FSM) no bloqueante
+// =====================================================================
+
+// --- ASIGNACIÓN DE PINES ---
+const int PIN_START     = 2;   // I0.0 (NA)
+const int PIN_STOP      = 3;   // I0.1 (NC)
+const int PIN_BIDON     = 4;   // I0.2 (Sensor óptico)
+const int PIN_NVL_T1    = 5;   // I0.3 (Boya T1 > 15%)
+const int PIN_NVL_T2    = 6;   // I0.4 (Boya T2 > 15%)
+const int PIN_RECETA    = 7;   // I0.5 (0 = Hogar, 1 = Industrial)
+const int PIN_ESTOP     = 8;   // I0.6 (NC de seguridad)
+const int PIN_RESET     = 9;   // I0.7 (Reset alarmas)
+
+const int PIN_EV1_BASE  = 10;  // Q0.0 (Válvula Base Agua)
+const int PIN_EV2_CONC  = 11;  // Q0.1 (Válvula Concentrado)
+const int PIN_MOTOR     = 12;  // Q0.2 (Motor Mezclador)
+const int PIN_LED_OK    = A0;  // Q0.3 (Piloto Verde Listo)
+const int PIN_LED_ALARM = A1;  // Q0.4 (Baliza Roja Alarma)
+
+// --- ESTADOS DE LA MÁQUINA SECUENCIAL ---
+enum EstadoPLC {
+  IDLE,              // Esperando bidón y start
+  DOSIFICANDO_BASE,  // EV1 activa (4.0s)
+  DOSIFICANDO_CONC,  // EV2 activa (2.0s o 5.0s)
+  HOMOGENEIZANDO,    // Motor activo (3.0s o 4.0s)
+  CICLO_COMPLETO,    // Luz Verde y bloqueo Poka-Yoke activo
+  ALARMA_BLOQUEO     // Paro de emergencia o tanques vacíos
+};
+
+EstadoPLC estadoActual = IDLE;
+
+// --- VARIABLES Y BANDERAS INTERNAS ---
+unsigned long tiempoInicioEtapa = 0;
+bool m0_4_poka_yoke_lock = false;
+unsigned int contadorBidones = 0;
+
+void setup() {
+  // Configuración de Entradas con Pull-Up o Pull-Down
+  pinMode(PIN_START, INPUT);
+  pinMode(PIN_STOP, INPUT_PULLUP);
+  pinMode(PIN_BIDON, INPUT);
+  pinMode(PIN_NVL_T1, INPUT);
+  pinMode(PIN_NVL_T2, INPUT);
+  pinMode(PIN_RECETA, INPUT);
+  pinMode(PIN_ESTOP, INPUT_PULLUP);
+  pinMode(PIN_RESET, INPUT);
+
+  // Configuración de Salidas a Relé / Driver
+  pinMode(PIN_EV1_BASE, OUTPUT);
+  pinMode(PIN_EV2_CONC, OUTPUT);
+  pinMode(PIN_MOTOR, OUTPUT);
+  pinMode(PIN_LED_OK, OUTPUT);
+  pinMode(PIN_LED_ALARM, OUTPUT);
+
+  apagarTodasSalidas();
+  Serial.begin(9600);
+  Serial.println("CleanDose PLC Inicializado - Scan 50ms deterministico");
+}
+
+void loop() {
+  unsigned long tActual = millis();
+
+  // 1. LECTURA DE IMAGEN DE ENTRADAS (PII)
+  bool inStart  = digitalRead(PIN_START) == HIGH;
+  bool inStop   = digitalRead(PIN_STOP) == HIGH; // NC: HIGH es normal
+  bool inBidon  = digitalRead(PIN_BIDON) == HIGH;
+  bool inNvlT1  = digitalRead(PIN_NVL_T1) == HIGH;
+  bool inNvlT2  = digitalRead(PIN_NVL_T2) == HIGH;
+  bool inReceta = digitalRead(PIN_RECETA) == HIGH; // 0: Hogar, 1: Ind
+  bool inEStop  = digitalRead(PIN_ESTOP) == HIGH;  // NC: HIGH es seguro
+  bool inReset  = digitalRead(PIN_RESET) == HIGH;
+
+  // 2. GESTIÓN DE SEGURIDAD PRIORITARIA (PARO Y BAJO NIVEL)
+  if (!inEStop || !inNvlT1 || !inNvlT2 || !inStop) {
+    estadoActual = ALARMA_BLOQUEO;
+  }
+
+  // Desbloqueo Poka-Yoke cuando se retira el bidón (I0.2 pasa a LOW)
+  if (!inBidon) {
+    m0_4_poka_yoke_lock = false;
+  }
+
+  // Reset de contador y rearme
+  if (inReset) {
+    contadorBidones = 0;
+    if (inEStop && inNvlT1 && inNvlT2) {
+      estadoActual = IDLE;
+    }
+  }
+
+  // 3. EJECUCIÓN DE LA MÁQUINA DE ESTADOS (LADDER EQUIVALENTE)
+  switch (estadoActual) {
+    case IDLE:
+      apagarTodasSalidas();
+      // Condición de arranque: Bidón presente + Start pulsado + Permisivos OK + Sin Bloqueo Poka-Yoke
+      if (inStart && inBidon && inNvlT1 && inNvlT2 && !m0_4_poka_yoke_lock) {
+        tiempoInicioEtapa = tActual;
+        estadoActual = DOSIFICANDO_BASE;
+      }
+      break;
+
+    case DOSIFICANDO_BASE:
+      digitalWrite(PIN_EV1_BASE, HIGH); // Q0.0 ON
+      digitalWrite(PIN_EV2_CONC, LOW);
+      digitalWrite(PIN_MOTOR, LOW);
+      digitalWrite(PIN_LED_OK, LOW);
+      digitalWrite(PIN_LED_ALARM, LOW);
+
+      // TON T1 = 4.0 segundos
+      if (tActual - tiempoInicioEtapa >= 4000) {
+        digitalWrite(PIN_EV1_BASE, LOW);
+        tiempoInicioEtapa = tActual;
+        estadoActual = DOSIFICANDO_CONC;
+      }
+      break;
+
+    case DOSIFICANDO_CONC:
+      digitalWrite(PIN_EV2_CONC, HIGH); // Q0.1 ON
+      
+      // Selección de tiempo según receta (I0.5): Hogar = 2.0s, Industrial = 5.0s
+      unsigned long tiempoConc = inReceta ? 5000 : 2000;
+      if (tActual - tiempoInicioEtapa >= tiempoConc) {
+        digitalWrite(PIN_EV2_CONC, LOW);
+        tiempoInicioEtapa = tActual;
+        estadoActual = HOMOGENEIZANDO;
+      }
+      break;
+
+    case HOMOGENEIZANDO:
+      digitalWrite(PIN_MOTOR, HIGH); // Q0.2 ON
+      
+      // TON T4 = 3.0s (Hogar) o 4.0s (Industrial)
+      unsigned long tiempoMezcla = inReceta ? 4000 : 3000;
+      if (tActual - tiempoInicioEtapa >= tiempoMezcla) {
+        digitalWrite(PIN_MOTOR, LOW);
+        contadorBidones++;
+        m0_4_poka_yoke_lock = true; // ENCLAVAMIENTO POKA-YOKE
+        estadoActual = CICLO_COMPLETO;
+      }
+      break;
+
+    case CICLO_COMPLETO:
+      digitalWrite(PIN_LED_OK, HIGH); // Q0.3 ON (Luz Verde)
+      // Permanece aquí hasta que el operario retire físicamente el bidón
+      if (!inBidon) {
+        digitalWrite(PIN_LED_OK, LOW);
+        estadoActual = IDLE;
+      }
+      break;
+
+    case ALARMA_BLOQUEO:
+      apagarTodasSalidas();
+      digitalWrite(PIN_LED_ALARM, HIGH); // Q0.4 ON (Baliza Roja)
+      // Permite volver a IDLE si se restablecen los niveles y el E-Stop
+      if (inEStop && inNvlT1 && inNvlT2 && inStop) {
+        digitalWrite(PIN_LED_ALARM, LOW);
+        estadoActual = IDLE;
+      }
+      break;
+  }
+
+  // 4. TIEMPO DETERMINÍSTICO DE CICLO SCAN (50 ms)
+  delay(50);
+}
+
+void apagarTodasSalidas() {
+  digitalWrite(PIN_EV1_BASE, LOW);
+  digitalWrite(PIN_EV2_CONC, LOW);
+  digitalWrite(PIN_MOTOR, LOW);
+  digitalWrite(PIN_LED_OK, LOW);
+  digitalWrite(PIN_LED_ALARM, LOW);
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE CERTIFICADO DE AUDITORÍA Y TRAZABILIDAD -->
+  <div class="modal-overlay" id="auditModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">📄</span>
+          <h3>Certificado Oficial de Dosificación y Trazabilidad de Lote</h3>
+        </div>
+        <button class="modal-close" id="btnCloseModal">&times;</button>
+      </div>
+      <div class="modal-body" id="auditReportContent">
+        <!-- Contenido generado dinámicamente -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-print" id="btnPrintReport">🖨️ Imprimir / Guardar PDF</button>
+        <button class="btn-secondary" id="btnCloseReport">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <div class="footer-left">
+      CleanDose PLC Automation System &copy; 2026 &bull; Norma ISA-101 / IEC 61131-3 &bull; Industria 4.0
+    </div>
+    <div class="footer-right">
+      Diseñado para Distribución Sanitaria a Granel con Filosofía Poka-Yoke
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
